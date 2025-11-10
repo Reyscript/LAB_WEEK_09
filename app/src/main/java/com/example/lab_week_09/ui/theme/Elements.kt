@@ -1,23 +1,21 @@
 package com.example.lab_week_09.ui.theme
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-// UI Element for displaying a title
 @Composable
 fun OnBackgroundTitleText(text: String) {
     TitleText(text = text, color = MaterialTheme.colorScheme.onBackground)
 }
 
-// Here, we use the titleLarge style from the typography
 @Composable
 fun TitleText(text: String, color: Color) {
     Text(
@@ -27,13 +25,11 @@ fun TitleText(text: String, color: Color) {
     )
 }
 
-// UI Element for displaying an item list
 @Composable
 fun OnBackgroundItemText(text: String) {
     ItemText(text = text, color = MaterialTheme.colorScheme.onBackground)
 }
 
-// Here, we use the bodySmall style from the typography
 @Composable
 fun ItemText(text: String, color: Color) {
     Text(
@@ -43,7 +39,6 @@ fun ItemText(text: String, color: Color) {
     )
 }
 
-// UI Element for displaying a button
 @Composable
 fun PrimaryTextButton(text: String, onClick: () -> Unit) {
     CustomTextButton(
@@ -53,7 +48,6 @@ fun PrimaryTextButton(text: String, onClick: () -> Unit) {
     )
 }
 
-// Here, we use the labelMedium style from the typography
 @Composable
 fun CustomTextButton(text: String, textColor: Color, onClick: () -> Unit) {
     Button(
@@ -68,5 +62,19 @@ fun CustomTextButton(text: String, textColor: Color, onClick: () -> Unit) {
             text = text,
             style = MaterialTheme.typography.labelMedium
         )
+    }
+}
+
+@Composable
+fun OnBackgroundItemText(text: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        OnBackgroundItemText(text = text)
+    }
+}
+
+@Composable
+fun OnBackgroundTitleText(text: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        OnBackgroundTitleText(text = text)
     }
 }

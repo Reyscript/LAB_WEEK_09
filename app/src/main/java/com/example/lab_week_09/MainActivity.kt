@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +34,9 @@ import androidx.navigation.navArgument
 import com.example.lab_week_09.ui.theme.OnBackgroundTitleText
 import com.example.lab_week_09.ui.theme.PrimaryTextButton
 import com.example.lab_week_09.ui.theme.OnBackgroundItemText
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,49 +55,46 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Declare a data class called Student
 data class Student(
     var name: String
 )
 
-// Here, we create a composable function called App
-// This will be the root composable of the app
+private val moshi: Moshi = Moshi.Builder()
+    .add(KotlinJsonAdapterFactory())
+    .build()
+
+private val studentListType = Types.newParameterizedType(List::class.java, Student::class.java)
+
+object StudentListJsonConverter {
+    private val adapter = moshi.adapter<List<Student>>(studentListType)
+
+    fun toJson(students: List<Student>): String {
+        return adapter.toJson(students)
+    }
+
+    fun fromJson(json: String): List<Student> {
+        return adapter.fromJson(json) ?: emptyList()
+    }
+}
+
 @Composable
 fun App(navController: NavHostController) {
-    // Here, we use NavHost to create a navigation graph
-    // We pass the navController as a parameter
-    // We also set the startDestination to "home"
-    // This means that the app will start with the Home composable
     NavHost(
         navController = navController,
         startDestination = "home"
     ) {
-        // Here, we create a route called "home"
-        // We pass the Home composable as a parameter
-        // This means that when the app navigates to "home",
-        // the Home composable will be displayed
         composable("home") {
-            // Here, we pass a lambda function that navigates to "resultContent"
-            // and pass the listData as a parameter
-            Home { listDataString ->
-                navController.navigate("resultContent/?listData=$listDataString")
+            Home { listData ->
+                val jsonData = StudentListJsonConverter.toJson(listData)
+                navController.navigate("resultContent/?listData=${jsonData}")
             }
         }
-        // Here, we create a route called "resultContent"
-        // We pass the ResultContent composable as a parameter
-        // This means that when the app navigates to "resultContent",
-        // the ResultContent composable will be displayed
-        // You can also define arguments for the route
-        // Here, we define a String argument called "listData"
-        // We use navArgument to define the argument
-        // We use NavType.StringType to define the type of the argument
         composable(
             "resultContent/?listData={listData}",
             arguments = listOf(navArgument("listData") {
                 type = NavType.StringType
             })
         ) { backStackEntry ->
-            // Here, we pass the value of the argument to the ResultContent composable
             ResultContent(
                 backStackEntry.arguments?.getString("listData").orEmpty()
             )
@@ -103,18 +104,15 @@ fun App(navController: NavHostController) {
 
 @Composable
 fun Home(
-    navigateFromHomeToResult: (String) -> Unit
+    navigateFromHomeToResult: (List<Student>) -> Unit
 ) {
-    // Here, we create a mutable state list of Student
     val listData = remember { mutableStateListOf(
         Student("Tanu"),
         Student("Tina"),
         Student("Tono")
     )}
-    // Here, we create a mutable state of Student
     var inputField = remember { mutableStateOf(Student("")) }
 
-    // We call the HomeContent composable
     HomeContent(
         listData,
         inputField.value,
@@ -125,7 +123,9 @@ fun Home(
                 inputField.value = Student("")
             }
         },
-        { navigateFromHomeToResult(listData.toList().toString()) }
+        {
+            navigateFromHomeToResult(listData.toList())
+        }
     )
 }
 
@@ -171,34 +171,87 @@ fun HomeContent(
                         }
                     )
                 }
+
+                if (listData.isEmpty()) {
+                    OnBackgroundItemText(text = "No students added yet")
+                }
             }
         }
-        items(listData) { item ->
-            Column(
-                modifier = Modifier
-                    .padding(vertical = 4.dp)
-                    .fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                OnBackgroundItemText(text = item.name)
+        if (listData.isNotEmpty()) {
+            items(listData) { item ->
+                Column(
+                    modifier = Modifier
+                        .padding(vertical = 4.dp)
+                        .fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    OnBackgroundItemText(text = item.name)
+                }
             }
         }
     }
 }
 
-// Here, we create a composable function called ResultContent
-// ResultContent accepts a String parameter called listData from the Home composable
-// then displays the value of listData to the screen
 @Composable
-fun ResultContent(listData: String) {
+fun ResultContent(listDataJson: String) {
+    val studentList = try {
+        StudentListJsonConverter.fromJson(listDataJson)
+    } catch (e: Exception) {
+        emptyList<Student>()
+    }
+
     Column(
         modifier = Modifier
-            .padding(vertical = 4.dp)
+            .padding(16.dp)
             .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Here, we call the OnBackgroundItemText UI Element
-        OnBackgroundItemText(text = listData)
+        OnBackgroundTitleText(text = "Student List (JSON Format)")
+
+        OnBackgroundItemText(
+            text = "JSON Data: $listDataJson",
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (studentList.isNotEmpty()) {
+            OnBackgroundTitleText(
+                text = "Parsed Students (${studentList.size} items)",
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp)
+            ) {
+                items(studentList) { student ->
+                    Column(
+                        modifier = Modifier
+                            .padding(vertical = 8.dp)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        OnBackgroundItemText(text = "Student: ${student.name}")
+                    }
+                }
+            }
+        } else {
+            OnBackgroundItemText(text = "No student data available")
+        }
+    }
+}
+
+@Composable
+fun OnBackgroundItemText(text: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        OnBackgroundItemText(text = text)
+    }
+}
+
+@Composable
+fun OnBackgroundTitleText(text: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        OnBackgroundTitleText(text = text)
     }
 }
 
@@ -216,5 +269,13 @@ fun LAB_WEEK_09Theme(
 fun PreviewHome() {
     LAB_WEEK_09Theme {
         Home { }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewResultContent() {
+    LAB_WEEK_09Theme {
+        ResultContent("""[{"name":"Tanu"},{"name":"Tina"},{"name":"Tono"}]""")
     }
 }
